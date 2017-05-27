@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
+import os
 
-df = pd.read_csv('atoms10-eye_data Samples.txt', sep = '\t', error_bad_lines=False)
-aoi_2016 = pd.read_csv('aoi_2016_v2kc.csv', sep = '|')
-identifier = pd.read_csv('identifier_logMSG_mapping.csv', error_bad_lines=False)
+df = pd.read_csv(os.getcwd()+'/eye/atoms/atoms10-eye_data Samples.txt', sep = '\t', error_bad_lines=False, skiprows = 37)
+print(df.head())
+aoi_2016 = pd.read_csv(os.getcwd()+'/eye/atoms/aoi_2016_v2kc.csv', sep = '|')
+identifier = pd.read_csv(os.getcwd()+'/eye/atoms/identifier_logMSG_mapping.csv', error_bad_lines=False)
 
 def get_luuid(x):
     return x.split()[1][6:]
@@ -11,12 +13,12 @@ def get_luuid(x):
 identifier['luuid'] = identifier['Event'].apply(get_luuid)
 identifier
 
-f = open('atoms10-eye_data Samples.txt', 'r')
+f = open(os.getcwd()+'/eye/atoms/atoms10-eye_data Samples.txt', 'r')
 
 def get_eye_columns():
     counter = 0
     temp_columns = []
-    for line in f.readlines():
+    for line in f.readlines()[37:]:
         if(line[0] == "#"):
             continue
         counter += 1
@@ -125,7 +127,7 @@ def join_aoi_output(output, identifier):
                     output['Step Name'][index] = relevant_aoi['Step Name'][0]
                     output['KC (ReprAll_fineButAtoms)'][index] = relevant_aoi['KC (ReprAll_fineButAtoms)'][0]
                     # print(output.loc[index]) #= toAdd
-    print(output.loc[investigating_index])
+    #print(output.loc[investigating_index])
     return output
 
 
@@ -167,6 +169,8 @@ row = answers.loc[1208616]
 splitted = row['L Raw X [px]'].split()
 splitted, splitted[-2]
 
+#toAdd[10] = messages
+
 #code for processing answers
 answers = messages[messages['L Raw X [px]'].str[:10] == " LOG luuid"]
 for index, row in answers.iterrows():
@@ -201,6 +205,7 @@ for index, row in answers.iterrows():
 
 #code for LOG_MSG_INIT
 Log_msg = messages[messages['L Raw X [px]'].str[:13] == " LOG_MSG_INIT"]
+
 
 for index, row in Log_msg.iterrows():
     toAdd = np.empty((1, 52), dtype = "<U100")[0]
@@ -324,15 +329,32 @@ for index, row in scroll.iterrows():
     toAdd = check_luuid(row, toAdd, 10)
     output_df.loc[index] = toAdd
 
+
+
 print("MSG Done")
 
 smp = df[df['Type'] == "SMP"]
 smp.columns = eye_columns
-
-for index, row in smp.iterrows():
+print("SMP Shape: ", smp.shape)
+'''for index, row in smp.iterrows():
     #toAdd = row
     toAdd = np.empty((1, 52), dtype = "<U100")[0]
     toAdd[12: 12 + len(eye_columns)] = row
-    output_df.loc[index] = toAdd
+    output_df.loc[index] = toAdd'''
+def getRows(row):
+    return row
+output_df[output_df.columns[12:12+len(smp.columns)]] = smp.apply(getRows, axis = 1)
 
-output_df.to_csv('atoms10.csv')
+
+print("SMP done")
+
+'''for index, row in df.iterrows():
+
+    output_df.loc[index]['luuid'] = row['luuid']'''
+
+'''def getLuuid(row):
+    return row['luuid']
+
+output_df['luuid'] = df.apply(getLuuid, axis = 1)
+
+output_df.to_csv('atoms10.csv')'''
