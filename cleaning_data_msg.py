@@ -61,6 +61,7 @@ pandas_columns = pandas_columns + eye_columns + columns_for_join
 
 output_df = pd.DataFrame(columns = pandas_columns)
 
+
 messages = df[df['Type'] == "MSG"]
 messages['L Raw X [px]'] = messages['L Raw X [px]'].str[10:]
 
@@ -333,20 +334,7 @@ for index, row in scroll.iterrows():
 
 print("MSG Done")
 
-smp = df[df['Type'] == "SMP"]
-smp.columns = eye_columns
-print("SMP Shape: ", smp.shape)
-'''for index, row in smp.iterrows():
-    #toAdd = row
-    toAdd = np.empty((1, 52), dtype = "<U100")[0]
-    toAdd[12: 12 + len(eye_columns)] = row
-    output_df.loc[index] = toAdd'''
-def getRows(row):
-    return row
-output_df[output_df.columns[12:12+len(smp.columns)]] = smp.apply(getRows, axis = 1)
 
-
-print("SMP done")
 
 '''for index, row in df.iterrows():
 
@@ -355,6 +343,6 @@ print("SMP done")
 '''def getLuuid(row):
     return row['luuid']
 
-output_df['luuid'] = df.apply(getLuuid, axis = 1)
+output_df['luuid'] = df.apply(getLuuid, axis = 1)'''
 
-output_df.to_csv('atoms10.csv')'''
+output_df.to_csv('atoms10_msg.csv')
