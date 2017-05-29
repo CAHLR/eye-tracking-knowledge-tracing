@@ -1,11 +1,14 @@
 import pandas as pd
 import numpy as np
 import os
+import sys
 
-df = pd.read_csv(os.getcwd()+'/eye/atoms/atoms10-eye_data Samples.txt', sep = '\t', error_bad_lines=False, skiprows = 37)
+file_name = str(sys.argv[1])
+
+df = pd.read_csv('/research/atoms/' + file_name + '-eye_data Samples.txt', sep = '\t', error_bad_lines=False, skiprows = 37)
 print(df.head())
-aoi_2016 = pd.read_csv(os.getcwd()+'/eye/atoms/aoi_2016_v2kc.csv', sep = '|')
-identifier = pd.read_csv(os.getcwd()+'/eye/atoms/identifier_logMSG_mapping.csv', error_bad_lines=False)
+aoi_2016 = pd.read_csv('/research/atoms/aoi_2016_v2kc.csv', sep = '|')
+identifier = pd.read_csv('/research/atoms/identifier_logMSG_mapping.csv', error_bad_lines=False)
 
 def get_luuid(x):
     return x.split()[1][6:]
@@ -13,7 +16,7 @@ def get_luuid(x):
 identifier['luuid'] = identifier['Event'].apply(get_luuid)
 identifier
 
-f = open(os.getcwd()+'/eye/atoms/atoms10-eye_data Samples.txt', 'r')
+f = open('/research/atoms/'+ file_name + '-eye_data Samples.txt', 'r')
 
 def get_eye_columns():
     counter = 0
@@ -76,4 +79,4 @@ def getRows(row):
 output_df[output_df.columns[12:12+len(smp.columns)]] = smp.apply(getRows, axis = 1)
 
 print("SMP done")
-output_df.to_csv('atoms10_smp.csv')
+output_df.to_csv(file_name + '_smp.csv')

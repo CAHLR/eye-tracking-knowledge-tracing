@@ -2,10 +2,14 @@ import pandas as pd
 import numpy as np
 import os
 
-df = pd.read_csv(os.getcwd()+'/eye/atoms/atoms10-eye_data Samples.txt', sep = '\t', error_bad_lines=False, skiprows = 37)
+import sys
+
+file_name = str(sys.argv[1])
+
+df = pd.read_csv('/research/atoms/' + file_name + '-eye_data Samples.txt', sep = '\t', error_bad_lines=False, skiprows = 37)
 print(df.head())
-aoi_2016 = pd.read_csv(os.getcwd()+'/eye/atoms/aoi_2016_v2kc.csv', sep = '|')
-identifier = pd.read_csv(os.getcwd()+'/eye/atoms/identifier_logMSG_mapping.csv', error_bad_lines=False)
+aoi_2016 = pd.read_csv('/research/atoms/aoi_2016_v2kc.csv', sep = '|')
+identifier = pd.read_csv('/research/atoms/identifier_logMSG_mapping.csv', error_bad_lines=False)
 
 def get_luuid(x):
     return x.split()[1][6:]
@@ -13,7 +17,7 @@ def get_luuid(x):
 identifier['luuid'] = identifier['Event'].apply(get_luuid)
 identifier
 
-f = open(os.getcwd()+'/eye/atoms/atoms10-eye_data Samples.txt', 'r')
+f = open('/research/atoms/'+ file_name + '-eye_data Samples.txt', 'r')
 
 def get_eye_columns():
     counter = 0
@@ -153,7 +157,7 @@ for index, row in keypressed.iterrows():
     toAdd = check_luuid(row, toAdd, 10)
     output_df.loc[index] = toAdd
 
-answers = messages[messages['L Raw X [px]'].str[:10] == " LOG luuid"]
+'''answers = messages[messages['L Raw X [px]'].str[:10] == " LOG luuid"]
 splitted = answers.loc[1228807]['L Raw X [px]'].split()#[5][5:]
 #any("luuid" in s for s in splitted)
 splitted#[1][6:]
@@ -168,7 +172,7 @@ splitted = row['L Raw X [px]'].split()
 
 row = answers.loc[1208616]
 splitted = row['L Raw X [px]'].split()
-splitted, splitted[-2]
+splitted, splitted[-2]'''
 
 #toAdd[10] = messages
 
@@ -345,4 +349,4 @@ print("MSG Done")
 
 output_df['luuid'] = df.apply(getLuuid, axis = 1)'''
 
-output_df.to_csv('atoms10_msg.csv')
+output_df.to_csv(file_name + '_msg.csv')
