@@ -6,8 +6,8 @@ import sys
 
 file_name = str(sys.argv[1])
 
-df = pd.read_csv('/research/atoms/' + file_name + '-eye_data Samples.txt', sep = '\t', error_bad_lines=False, skiprows = 37)
-print(df.head())
+df = pd.read_csv('/research/atoms/raw_data/' + file_name + '-eye_data Samples.txt', sep = '\t', error_bad_lines=False, skiprows = 37)
+#print(df.head())
 aoi_2016 = pd.read_csv('/research/atoms/aoi_2016_v2kc.csv', sep = '|')
 identifier = pd.read_csv('/research/atoms/identifier_logMSG_mapping.csv', error_bad_lines=False)
 
@@ -17,7 +17,7 @@ def get_luuid(x):
 identifier['luuid'] = identifier['Event'].apply(get_luuid)
 identifier
 
-f = open('/research/atoms/'+ file_name + '-eye_data Samples.txt', 'r')
+f = open('/research/atoms/raw_data/'+ file_name + '-eye_data Samples.txt', 'r')
 
 def get_eye_columns():
     counter = 0
@@ -55,6 +55,7 @@ def get_eye_columns():
     return temp_columns
 
 eye_columns = get_eye_columns()
+#print("eye_columns", eye_columns)
 
 pandas_columns = ['username', 'timestamp', 'meta', 'mouseX', 'mouseY', 'Response', 'question', 'stimulus', 'problem',
                   'I',
@@ -73,7 +74,7 @@ def addIdentifier(x):
     splitted = x.split()
     luuid = [i for i in splitted if i[:5] == 'luuid']
     if luuid != []:
-        print(luuid)
+        #print(luuid)
         desired_luuid = luuid[0][6:]
         #print(desired_luuid)
         #print(splitted)
@@ -97,8 +98,6 @@ def check_luuid(row, output, output_index):
         #print(len(output[output_index]))
     return output
 
-
-columns_for_join = ['Session', 'condition', 'problem_type', 'representation', 'Stimulus', 'AOI_withPT', 'Step Name']
 
 
 def join_aoi_output(output, identifier):
@@ -144,7 +143,7 @@ for index, row in keypressed.iterrows():
     print(row['Time'])
     if(counter == 2):
         break'''
-    toAdd = np.empty((1, 52), dtype = "<U100")[0]
+    toAdd = np.empty((1, len(output_df.columns)), dtype = "<U100")[0]
     #toAdd[:] = np.NAN
     toAdd[0] = 'atoms10'
     toAdd[1] = row['Time']
@@ -155,6 +154,8 @@ for index, row in keypressed.iterrows():
     toAdd[13] = 'UE-keypress'
     #add the luuids if present
     toAdd = check_luuid(row, toAdd, 10)
+    #print("Output_df column length", len(output_df.columns))
+    #print("Output_df column length", len(toAdd))
     output_df.loc[index] = toAdd
 
 '''answers = messages[messages['L Raw X [px]'].str[:10] == " LOG luuid"]
@@ -183,7 +184,7 @@ for index, row in answers.iterrows():
     print(row['Time'])
     if(counter == 2):
         break'''
-    toAdd = np.empty((1, 52), dtype = "<U100")[0]
+    toAdd = np.empty((1, len(output_df.columns)), dtype = "<U100")[0]
     #toAdd[:] = np.NAN
     toAdd[0] = 'atoms10'
     toAdd[1] = row['Time']
@@ -196,9 +197,14 @@ for index, row in answers.iterrows():
         #Event Type
         toAdd[13] = 'ButtonPressed'
     else:
-        question = splitted[5][2:]
-        toAdd[6] = question
+        #print("Splitted", splitted)
+        try:
+            question = splitted[5][2:]
+            toAdd[6] = question
         #Event Type
+
+        except IndexError:
+            continue
         toAdd[13] = 'UpdateCheckBox'
     #add the 'I' column
     toAdd[9] = splitted[-2]
@@ -213,7 +219,7 @@ Log_msg = messages[messages['L Raw X [px]'].str[:13] == " LOG_MSG_INIT"]
 
 
 for index, row in Log_msg.iterrows():
-    toAdd = np.empty((1, 52), dtype = "<U100")[0]
+    toAdd = np.empty((1, len(output_df.columns)), dtype = "<U100")[0]
     toAdd[0] = 'atoms10'
     toAdd[1] = row['Time']
     splitted = row['L Raw X [px]'].split()
@@ -239,7 +245,7 @@ mouse_click = messages[messages['L Raw X [px]'].str[:14] == " UE-mouseclick"]
 mouse_click_filtered = mouse_click[mouse_click['L Raw X [px]'].str[15:19] == 'left']
 
 for index, row in mouse_click_filtered.iterrows():
-    toAdd = np.empty((1, 52), dtype = "<U100")[0]
+    toAdd = np.empty((1, len(output_df.columns)), dtype = "<U100")[0]
     toAdd[0] = 'atoms10'
     toAdd[1] = row['Time']
     splitted = row['L Raw X [px]'].split()
@@ -267,7 +273,7 @@ for index, row in mouse_click_filtered.iterrows():
 website_margin = messages[messages['L Raw X [px]'].str[:19] == " fullWebsite Margin"]
 
 for index, row in website_margin.iterrows():
-    toAdd = np.empty((1, 52), dtype="<U100")[0]
+    toAdd = np.empty((1, len(output_df.columns)), dtype="<U100")[0]
     toAdd[0] = 'atoms10'
     toAdd[1] = row['Time']
     splitted = row['L Raw X [px]'].split()
@@ -286,7 +292,7 @@ scroll =messages[messages['L Raw X [px]'].str[:7] == " scroll"]
 # code for scroll
 scroll = messages[messages['L Raw X [px]'].str[:7] == " scroll"]
 for index, row in scroll.iterrows():
-    toAdd = np.empty((1, 52), dtype="<U100")[0]
+    toAdd = np.empty((1, len(output_df.columns)), dtype="<U100")[0]
     toAdd[0] = 'atoms10'
     toAdd[1] = row['Time']
     splitted = row['L Raw X [px]'].split()
@@ -303,13 +309,13 @@ for index, row in scroll.iterrows():
 #code for snapshot
 scroll = messages[messages['L Raw X [px]'].str[-3:] == "jpg"]
 for index, row in scroll.iterrows():
-    toAdd = np.empty((1, 52), dtype = "<U100")[0]
+    toAdd = np.empty((1, len(output_df.columns)), dtype = "<U100")[0]
     toAdd[0] = 'atoms10'
     toAdd[1] = row['Time']
     #splitted = row['L Raw X [px]'].split()
     #add data following word 'scroll' to meta column
     toAdd[2] = str(row['L Raw X [px]'][:]) #+ ".jpg"
-    print(toAdd[1])
+    #print(toAdd[1])
     #Event Type
     toAdd[13] = "jpg"
     toAdd[12] = row['Time']
@@ -320,13 +326,13 @@ for index, row in scroll.iterrows():
 #code for EndTrial
 scroll = messages[messages['L Raw X [px]'].str[:9] == " EndTrial"]
 for index, row in scroll.iterrows():
-    toAdd = np.empty((1, 52), dtype = "<U100")[0]
+    toAdd = np.empty((1, len(output_df.columns)), dtype = "<U100")[0]
     toAdd[0] = 'atoms10'
     toAdd[1] = row['Time']
     #splitted = row['L Raw X [px]'].split()
     #add info for EndTrial to meta column
     toAdd[2] = str(row['L Raw X [px]'][:]) #+ ".jpg"
-    print(toAdd[1])
+    #print(toAdd[1])
     toAdd[12] = row['Time']
     #Event Type
     toAdd[13] = "EndTrial"
