@@ -5,9 +5,9 @@ import sys
 
 file_name = str(sys.argv[1])
 
-df = pd.read_csv('/research/atoms/' + file_name + '-eye_data Samples.txt', sep = '\t', error_bad_lines=False, skiprows = 37)
+df = pd.read_csv('/research/atoms/good_data/2014 F Session 2/' + file_name + '-eye_data Samples.txt', sep = '\t', error_bad_lines=False, skiprows = 37)
 print(df.head())
-aoi_2016 = pd.read_csv('/research/atoms/aoi_2016_v2kc.csv', sep = '|')
+#aoi_2016 = pd.read_csv('/research/atoms/aoi_2016_v2kc.csv', sep = '|')
 identifier = pd.read_csv('/research/atoms/identifier_logMSG_mapping.csv', error_bad_lines=False)
 
 def get_luuid(x):
@@ -16,7 +16,7 @@ def get_luuid(x):
 identifier['luuid'] = identifier['Event'].apply(get_luuid)
 identifier
 
-f = open('/research/atoms/'+ file_name + '-eye_data Samples.txt', 'r')
+f = open('/research/atoms/good_data/2014 F Session 2/' + file_name + '-eye_data Samples.txt', 'r')
 
 def get_eye_columns():
     counter = 0
@@ -56,12 +56,10 @@ def get_eye_columns():
 eye_columns = get_eye_columns()
 
 pandas_columns = ['username', 'timestamp', 'meta', 'mouseX', 'mouseY', 'Response', 'question', 'stimulus', 'problem',
-                  'I',
-                  'luuid', 'keypress']
-columns_for_join = ['Session', 'condition', 'problem_type', 'representation', 'Stimulus', 'AOI_withPT', 'Step Name',
-                    'KC (ReprAll_fineButAtoms)']
-pandas_columns = pandas_columns + eye_columns + columns_for_join
+                  'answer_given',
+                  'luuid', 'keypress', 'input_type']
 
+pandas_columns = pandas_columns + eye_columns
 output_df = pd.DataFrame(columns = pandas_columns)
 
 smp = df[df['Type'] == "SMP"]
@@ -76,7 +74,7 @@ print("SMP Shape: ", smp.shape)
 
 def getRows(row):
     return row
-output_df[output_df.columns[12:12+len(smp.columns)]] = smp.apply(getRows, axis = 1)
+output_df[output_df.columns[13:13+len(smp.columns)]] = smp.apply(getRows, axis = 1)
 
 print("SMP done")
 output_df.to_csv(file_name + '_smp.csv')
