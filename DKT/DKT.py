@@ -105,7 +105,6 @@ class DKTnet():
     def __init__(self, input_dim, input_dim_order, hidden_layer_size, batch_size, epoch,
         x_train=[], y_train=[], y_train_order=[],
         x_test=[], y_test=[], y_test_order=[]):
-
         ## input dim is the dimension of the input at one timestamp (dimension of x_t)
         self.input_dim = int(input_dim)
         ## input_dim_order is the dimension of the one hot representation of problem to
@@ -128,7 +127,6 @@ class DKTnet():
         self.x_test = x_test
         self.y_test = y_test
         self.y_test_order = y_test_order
-
         self.users = np.shape(x_train)[0]
         self.validation_split = 0.2
         print ("Initialization Done")
@@ -186,7 +184,7 @@ class DKTnet():
             print ("reduced_shape", shape)
             return tuple(shape)
         #using 'loss' instead of 'val_loss'
-        earlyStopping = EarlyStopping(monitor='loss', patience=2, verbose=0, mode='auto')
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=2, verbose=0, mode='auto')
         reduced = Lambda(reduce_dim, output_shape = reduce_dim_shape)(merged)
         model = Model(inputs=[x,y_order], outputs=reduced)
         model.compile( optimizer = 'rmsprop',
@@ -203,16 +201,14 @@ class DKTnet():
         #intermediate_layer_model = Model(inputs = [x,y_order],outputs = reduced)
         #intermediate_output = intermediate_layer_model.predict([self.x_train,self.y_train_order])
         #print ('reduced',intermediate_output.shape)
-        pdb.set_trace()
     
         model.fit([self.x_train, self.y_train_order], self.y_train, batch_size = self.batch_size, \
                   epochs=self.epoch, \
                   callbacks = [ earlyStopping, \
                                 TestCallback((self.x_test, \
                                 self.y_test_order, \
-                                self.y_test))], shuffle = True)
-        
-                  #validation_data = ([self.x_test,self,_test_order],self.y_test), shuffle = True)
+                                self.y_test))],\
+            validation_data = ([self.x_test,self.y_test_order],self.y_test), shuffle = True)
         
         #model.fit([self.x_train, self.y_train_order], self.y_train, batch_size = self.batch_size, \
                   #epochs=self.epoch, \

@@ -52,11 +52,11 @@ for indexes in cross_val_list:
         train_fold.append(data.trainData[stu_dict[(train_val_data[train_index])]])
     for val_index in val_indexes:
         val_fold.append(data.trainData[stu_dict[(train_val_data[val_index])]])
-    batch_size = 1
+    batch_size = 5
     input_dim_order =  int(data.max_questionID + 1) #consider whether we need plus 1
     input_dim = 2 * input_dim_order
     epoch = 10
-    hidden_layer_size = 512
+    hidden_layer_size = 128
 
     '''Training part starts from now'''
     x_train = []
@@ -152,9 +152,8 @@ for indexes in cross_val_list:
     x_val = x_val[:,:-1,:]
     y_val = y_val[:,1:,:]
     y_val_order = y_val_order[:,1:,:]
-
     model = DKTnet(input_dim, input_dim_order, hidden_layer_size,
             batch_size, epoch, np.array(x_train), np.array(y_train), np.array(y_train_order),np.array(x_val), np.array(y_val), np.array(y_val_order))
-
+    
     model.build()
 
