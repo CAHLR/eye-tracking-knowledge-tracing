@@ -16,6 +16,28 @@ import os
 from utils import * #grid_eyetracking(w_size, h_size, x_min, y_min, x_max, y_max, position)
 # This is the 30 students-5 cross validation version. 7.16
 from discrete_model import discrete_net
+from optparse import OptionParser
+
+'''Choose different mode of eye-tracking model'''
+parser = OptionParser()
+parser.add_option("--si","--simple_index",action="store", type="string", dest="mode",\
+                 default=True,help="using simple index for training, no onehot,and difference between pages")
+parser.add_option("--so","--simple_onehot",action="store", type="string", dest="mode",\
+                 help="using one-hot for training, no difference between pages")
+parser.add_option("--sc","--simple_continuous",action="store", type="string", dest="mode",\
+                 help="using simple continuous for training, no difference between pages")
+
+parser.add_option("--co","--complex_onehot",action="store", type="string", dest="mode",\
+                 help="using complex onehot for training, have difference between pages")
+parser.add_option("--cc","--complex_continuous",action="store", type="string", dest="mode",\
+                 help="using complex continuous for training, have difference between pages")
+
+(options, args) = parser.parse_args(args)
+
+
+
+
+
 cross_val_list = [[[ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
        22, 23, 24],[0, 1, 2, 3, 4]],
 [[ 0,  1,  2,  3,  4, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
@@ -62,7 +84,7 @@ y_max = 0 # initialization
 w_size = 5
 h_size = 5
 batch_size = 5
-epoch = 10
+epoch = 50
 hidden_layer_size = 128
 ''' Starts processing data'''    
 for imputed_file in imputed_list:
@@ -105,39 +127,50 @@ for i in range(len(total_position)):
     df_new = pd.DataFrame(index, columns = [total_name[i]]) 
     df = pd.concat([df,df_new], axis=1)
 df = df.replace(float('nan'),-1.0)
-total_index = list(df)
-total_index = total_index[:, :, newaxis]
 
-max_length = 0
-for answer in total_answers:
-    max_length = max(max_length, len(answer))
-
-tmp_answers = []
-for answer in total_answers:
-    len(answer)
-    tmp_answers.append(list(answer) + list(-1 * np.ones([max_length-len(answer)])))
-total_answers = tmp_answers
-tmp_answers = []
-total_answers = np.array(total_answers)
-total_answers = total_answers[:, :, newaxis]
-
-model = discrete_net(batch_size, epoch, hidden_layer_size)
-model.build(total_index,total_answers,total_index,total_answers)
-
-
-
+total_index = df.transpose().values.tolist()
+index_dict = {}
+answer_dict = {}
+for i in range(len(total_name)):
+    index_dict.update({total_name[i]: total_index[i]})
+    answer_dict.update({total_name[i]: total_answers[i]})
+    
 '''Now starts cross validation'''    
 cv_count = 0
+max_len = np.max([len(i) for i in total_index])
 for indexes in cross_val_list:
     cv_count += 1
     print ('cv_count = ',cv_count)
     train_indexes, val_indexes = indexes
-    train_fold = []
-    val_fold = []
+    train_input = []
+    train_truth = []
+    val_input = []
+    val_truth = []
     
     for train_index in train_indexes:
-        train_fold.append(data.trainData[stu_dict[(train_val_data[train_index])]])
+        pad_len = max_len-len(answer_dict[train_val_data[train_index]])
+        pad = list(answer_dict[train_val_data[train_index]]) +\
+               list((-1.) * np.ones(pad_len))
+        train_input.append(index_dict[train_val_data[train_index]])
+        train_truth.append(pad)
     for val_index in val_indexes:
-        val_fold.append(data.trainData[stu_dict[(train_val_data[val_index])]])
+        pad_len = max_len-len(answer_dict[train_val_data[val_index]])
+        pad = list(answer_dict[train_val_data[val_index]]) +\
+               list((-1.) * np.ones(pad_len))                        
+        val_input.append(index_dict[train_val_data[val_index]])
+        val_truth.append(pad)
+    
+    
+    if len(np.array(train_input).shape) == 2: # input is region by integer, which is 2-d
+        train_input = (np.array(train_input))[:,:,np.newaxis]
+        train_truth = (np.array(train_truth))[:,:,np.newaxis]
+        val_input = (np.array(val_input))[:,:,np.newaxis]
+        val_truth = (np.array(val_truth))[:,:,np.newaxis]
+
+    model = discrete_net(batch_size, epoch, hidden_layer_size)
+    model.build(train_input,train_truth, val_input,val_truth)
+
+
+
 
         

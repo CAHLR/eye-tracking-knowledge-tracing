@@ -19,11 +19,87 @@ import pdb
 from math import sqrt
 from keras.callbacks import Callback
 
+class TestCallback(Callback):
 
+    def __init__(self, test_data = [[],[]]):
+        self.x_test, self.y_test = test_data
+
+    def on_epoch_begin(self, epoch, logs={}):
+
+        y_pred = self.model.predict(self.x_test)
+        avg_rmse, avg_acc = self.rmse_masking(self.y_test, y_pred)
+        print('\nTesting avg_rmse: {}\n'.format(avg_rmse))
+        print('\nTesting avg_acc: {}\n'.format(avg_acc))
+
+
+    def rmse_masking(self, y_true, y_pred):
+        #mask_matrix = np.sum(self.y_test_order, axis=2).flatten()
+        num_users, max_sequences = np.shape(self.x_test)[0], np.shape(self.x_test)[1]
+        #we want y_pred and y_true both to be matrix of 2 dim.
+        if len(y_pred.shape) and len(y_true.shape) == 3:
+            y_pred = y_pred.flatten()
+            y_true = y_true.flatten()
+        rmse = []
+        acc = []
+        padding_num = 0
+        for user in range(num_users):
+            diff_sq, response, correct = 0, 0, 0
+            for i in range(user * max_sequences, (user + 1) * max_sequences):
+                if y_true[i] == -1:
+                    continue
+                if y_true[i] == 1 and y_pred[i] >0.5:
+                    correct += 1
+                elif y_true[i] == 0 and y_pred[i] < 0.5:
+                    correct += 1
+                response += 1
+                diff_sq += (y_true[i] - y_pred[i]) ** 2
+            if response != 0:
+                acc.append(correct/float(response))
+                rmse.append(sqrt(diff_sq/float(response)))
+        # print ('padding_num',padding_num)
+        try:
+            return sum(rmse)/float(len(rmse)), sum(acc)/float(len(acc))
+        except:
+            pdb.set_trace()
+    '''
+    def rmse_masking_on_batch(self, y_true, y_pred, y_order):
+        num_users, max_responses = np.shape(y_order)[0], np.shape(y_order)[1]
+        mask_matrix = np.sum(y_order, axis=2).flatten()
+        #we want y_pred and y_true both to be matrix of 2 dim.
+        if len(y_pred.shape) and len(y_true.shape) == 3:
+            y_pred = y_pred.flatten()
+            y_true = y_true.flatten()
+        rmse = []
+        acc = []
+        padding_num = 0
+        for user in range(num_users):
+            diff_sq, response, correct = 0, 0, 0
+            for i in range(user * max_responses, (user + 1) * max_responses):
+                if mask_matrix[i] == 0:
+                    break
+                if y_true[i] == 1 and y_pred[i] >0.5:
+                    correct += 1
+                elif y_true[i] == 0 and y_pred[i] < 0.5:
+                    correct += 1
+                elif y_true[i] == -1:
+                    padding_num += 1
+                response += 1
+                diff_sq += (y_true[i] - y_pred[i]) ** 2
+            if response != 0:
+                acc.append(correct/float(response))
+                rmse.append(sqrt(diff_sq/float(response)))
+        # print ('padding_num',padding_num)
+        try:
+            return rmse, acc
+            # return sum(rmse)/float(len(rmse)), sum(acc)/float(len(acc))
+        except:
+            pdb.set_trace()
+    '''       
+            
 
 class discrete_net():
     def __init__(self,batch_size, epoch, hidden_layer_size):
-        self.input_dim = 1 # the index per student is a vector
+        #self.input_dim = 1 # we don't need to specify input_dim here
         self.output_dim = 1 # the output response is 1/0
         self.batch_size = batch_size
         self.epoch = epoch
@@ -43,9 +119,9 @@ class discrete_net():
         self.val_index = val_index
         self.val_response = val_response
         
-        x = Input(batch_shape = (None, None, self.input_dim), name='x')
-        masked = (Masking(mask_value= -1, input_shape = (None, None, self.input_dim)))(x)
-        lstm_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
+        x = Input(batch_shape = (None, None, None), name='x')
+        masked = (Masking(mask_value= -1, input_shape = (None, None, None)))(x)
+        lstm_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, None), return_sequences = True)(masked)
         dense_out = Dense(self.output_dim, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(lstm_out)
         earlyStopping = EarlyStopping(monitor='val_loss', patience=2, verbose=0, mode='auto')
         
@@ -56,7 +132,9 @@ class discrete_net():
 
         model.fit(self.train_index, self.train_response, batch_size = self.batch_size, \
                   epochs=self.epoch, \
-                  callbacks = [ earlyStopping], \
+                  callbacks = [ earlyStopping, \
+                                TestCallback([self.val_index, \
+                                self.val_response])],\
                                 validation_data = (self.val_index,self.val_response), shuffle = True)
         
         
