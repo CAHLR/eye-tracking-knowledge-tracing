@@ -20,19 +20,19 @@ from optparse import OptionParser
 
 '''Choose different mode of eye-tracking model'''
 parser = OptionParser()
-parser.add_option("--si","--simple_index",action="store", type="string", dest="mode",\
-                 default=True,help="using simple index for training, no onehot,and difference between pages")
-parser.add_option("--so","--simple_onehot",action="store", type="string", dest="mode",\
+parser.add_option("--simple_index",action="store_true",  dest="simple_index",\
+                 help="using simple index for training, no onehot,and difference between pages")
+parser.add_option("--simple_onehot",action="store_true", dest="simple_onehot",\
                  help="using one-hot for training, no difference between pages")
-parser.add_option("--sc","--simple_continuous",action="store", type="string", dest="mode",\
+parser.add_option("--simple_continuous",action="store_true",  dest="simple_continuous",\
                  help="using simple continuous for training, no difference between pages")
 
-parser.add_option("--co","--complex_onehot",action="store", type="string", dest="mode",\
+parser.add_option("--complex_onehot",action="store_true",  dest="complex_onehot",\
                  help="using complex onehot for training, have difference between pages")
-parser.add_option("--cc","--complex_continuous",action="store", type="string", dest="mode",\
+parser.add_option("--complex_continuous",action="store_true",  dest="complex_continuous",\
                  help="using complex continuous for training, have difference between pages")
 
-(options, args) = parser.parse_args(args)
+(options, args) = parser.parse_args()
 
 
 
@@ -75,6 +75,7 @@ total_answers = []
 total_name = []
 total_index = []
 total_time_stamp = []
+total_page_num = []
 
 imputed_file = imputed_list[0]
 x_min = float("inf")
@@ -96,6 +97,8 @@ for imputed_file in imputed_list:
         print(student_name)
         student = pd.read_csv(imputed_file, low_memory=False)
         total_name.append(student_name)
+        
+        total_page_num.append(student.Representation_Number_Overall[student.Screen_Number<=3])
         
         total_position.append([student.L_Raw_X[student.Screen_Number<=3],student.L_Raw_Y[student.Screen_Number<=3]])
         student.Response = student.Response.replace(float('nan'),-1)
@@ -131,9 +134,13 @@ df = df.replace(float('nan'),-1.0)
 total_index = df.transpose().values.tolist()
 index_dict = {}
 answer_dict = {}
+position_dict = {}
+page_num_dict = {}
 for i in range(len(total_name)):
     index_dict.update({total_name[i]: total_index[i]})
+    position_dict.update({total_name[i]: total_position[i]})
     answer_dict.update({total_name[i]: total_answers[i]})
+    page_num_dict.update({total_name[i]: total_page_num[i]})
     
 '''Now starts cross validation'''    
 cv_count = 0
@@ -147,27 +154,137 @@ for indexes in cross_val_list:
     val_input = []
     val_truth = []
     
-    for train_index in train_indexes:
-        pad_len = max_len-len(answer_dict[train_val_data[train_index]])
-        pad = list(answer_dict[train_val_data[train_index]]) +\
-               list((-1.) * np.ones(pad_len))
-        train_input.append(index_dict[train_val_data[train_index]])
-        train_truth.append(pad)
-    for val_index in val_indexes:
-        pad_len = max_len-len(answer_dict[train_val_data[val_index]])
-        pad = list(answer_dict[train_val_data[val_index]]) +\
-               list((-1.) * np.ones(pad_len))                        
-        val_input.append(index_dict[train_val_data[val_index]])
-        val_truth.append(pad)
-    
-    
-    if len(np.array(train_input).shape) == 2: # input is region by integer, which is 2-d
+    if options.simple_continuous == True:
+        for train_index in train_indexes:
+            pad_len = max_len-len(answer_dict[train_val_data[train_index]])
+            pad_truth = list(answer_dict[train_val_data[train_index]]) +\
+                   list((-1.) * np.ones(pad_len))
+            pad_x = list(position_dict[train_val_data[train_index]][0]) +\
+                   list((-1.) * np.ones(pad_len))
+            pad_y = list(position_dict[train_val_data[train_index]][1]) +\
+                   list((-1.) * np.ones(pad_len))
+                           
+            train_input.append([pad_x, pad_y])
+            train_truth.append(pad_truth)
+            
+        for val_index in val_indexes:
+            pad_len = max_len-len(answer_dict[train_val_data[val_index]])
+            pad_truth = list(answer_dict[train_val_data[val_index]]) +\
+                   list((-1.) * np.ones(pad_len))
+            pad_x = list(position_dict[train_val_data[val_index]][0]) +\
+                   list((-1.) * np.ones(pad_len))
+            pad_y = list(position_dict[train_val_data[val_index]][1]) +\
+                   list((-1.) * np.ones(pad_len))
+                           
+            val_input.append([pad_x, pad_y])
+            val_truth.append(pad_truth)
+            
+            
+        train_input = (np.array(train_input)).swapaxes(1,2)
+        train_truth = (np.array(train_truth))[:,:,np.newaxis]
+        val_input = (np.array(val_input)).swapaxes(1,2)
+        val_truth = (np.array(val_truth))[:,:,np.newaxis]
+        
+            
+    if options.simple_index == True:
+        for train_index in train_indexes:
+            pad_len = max_len-len(answer_dict[train_val_data[train_index]])
+            pad = list(answer_dict[train_val_data[train_index]]) +\
+                   list((-1.) * np.ones(pad_len))
+            train_input.append(index_dict[train_val_data[train_index]])
+            train_truth.append(pad)
+        for val_index in val_indexes:
+            pad_len = max_len-len(answer_dict[train_val_data[val_index]])
+            pad = list(answer_dict[train_val_data[val_index]]) +\
+                   list((-1.) * np.ones(pad_len))                        
+            val_input.append(index_dict[train_val_data[val_index]])
+            val_truth.append(pad)
+            
+            #if len(np.array(train_input).shape) == 2: # input is region by integer, which is 2-d
         train_input = (np.array(train_input))[:,:,np.newaxis]
         train_truth = (np.array(train_truth))[:,:,np.newaxis]
         val_input = (np.array(val_input))[:,:,np.newaxis]
         val_truth = (np.array(val_truth))[:,:,np.newaxis]
-
-    model = discrete_net(batch_size, epoch, hidden_layer_size)
+    
+    if options.simple_onehot == True:
+        max_index = 0
+        for train_index in train_indexes:
+            max_index = max(max_index,train_index)
+            pad_len = max_len-len(answer_dict[train_val_data[train_index]])
+            pad = list(answer_dict[train_val_data[train_index]]) +\
+                   list((-1.) * np.ones(pad_len))
+            train_input.append(index_dict[train_val_data[train_index]])
+            train_truth.append(pad)
+        for val_index in val_indexes:
+            max_index = max(max_index,val_index)
+            pad_len = max_len-len(answer_dict[train_val_data[val_index]])
+            pad = list(answer_dict[train_val_data[val_index]]) +\
+                   list((-1.) * np.ones(pad_len))                        
+            val_input.append(index_dict[train_val_data[val_index]])
+            val_truth.append(pad)
+        
+        train_input = np.array(train_input, dtype = int)
+        val_input = np.array(val_input, dtype = int)
+        train_input[train_input==-1.] = max_index+1 # padding value is max_index+1
+        val_input[val_input==-1.] = max_index+1
+        
+        train_input = np.eye(max_index+2)[np.array(train_input)] # onehot
+        train_truth = (np.array(train_truth))[:,:,np.newaxis]
+        val_input = np.eye(max_index+2)[np.array(val_input)] #onehot
+        val_truth = (np.array(val_truth))[:,:,np.newaxis]
+        '''One hot will be of length( max_index+2)'''
+        print('Max_index-',max_index,'Padding-',max_index+1,' Onehot-',max_index+2)
+        
+    
+    if options.complex_continuous == True:
+        train_page_num = []
+        val_page_num = []
+        max_page = np.max([i for i in total_page_num])
+        for train_index in train_indexes:
+            pad_len = max_len-len(answer_dict[train_val_data[train_index]])
+            pad_truth = list(answer_dict[train_val_data[train_index]]) +\
+                   list((-1.) * np.ones(pad_len))
+            pad_x = list(position_dict[train_val_data[train_index]][0]) +\
+                   list((-1.) * np.ones(pad_len))
+            pad_y = list(position_dict[train_val_data[train_index]][1]) +\
+                   list((-1.) * np.ones(pad_len))
+            
+            pad_page_num = list(page_num_dict[train_val_data[train_index]])+\
+                            list((-1.) * np.ones(pad_len))
+            train_input.append([pad_x, pad_y])
+            train_truth.append(pad_truth)
+            train_page_num.append(pad_page_num)
+            
+            
+        for val_index in val_indexes:
+            pad_len = max_len-len(answer_dict[train_val_data[val_index]])
+            pad_truth = list(answer_dict[train_val_data[val_index]]) +\
+                   list((-1.) * np.ones(pad_len))
+            pad_x = list(position_dict[train_val_data[val_index]][0]) +\
+                   list((-1.) * np.ones(pad_len))
+            pad_y = list(position_dict[train_val_data[val_index]][1]) +\
+                   list((-1.) * np.ones(pad_len))
+            
+            pad_page_num = list(page_num_dict[train_val_data[val_index]])+\
+                        list((-1.) * np.ones(pad_len))
+            
+            val_input.append([pad_x, pad_y])
+            val_truth.append(pad_truth)
+            val_page_num.append(pad_page_num)
+            
+        #train_page_num = np.array
+        
+        train_input = (np.array(train_input)).swapaxes(1,2)
+        train_truth = (np.array(train_truth))[:,:,np.newaxis]
+        val_input = (np.array(val_input)).swapaxes(1,2)
+        val_truth = (np.array(val_truth))[:,:,np.newaxis]
+        train_page_num = np.eye(max_page)[np.array(train_page_num)]
+        val_page_num = np.eye(max_page)[np.array(val_page_num)]
+        
+        
+    
+    input_dim = train_input.shape[-1]
+    model = discrete_net(batch_size, epoch, hidden_layer_size, input_dim)
     model.build(train_input,train_truth, val_input,val_truth)
 
 

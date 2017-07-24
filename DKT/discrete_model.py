@@ -98,8 +98,8 @@ class TestCallback(Callback):
             
 
 class discrete_net():
-    def __init__(self,batch_size, epoch, hidden_layer_size):
-        #self.input_dim = 1 # we don't need to specify input_dim here
+    def __init__(self,batch_size, epoch, hidden_layer_size,input_dim):
+        self.input_dim = input_dim # we don't need to specify input_dim here
         self.output_dim = 1 # the output response is 1/0
         self.batch_size = batch_size
         self.epoch = epoch
@@ -119,9 +119,9 @@ class discrete_net():
         self.val_index = val_index
         self.val_response = val_response
         
-        x = Input(batch_shape = (None, None, None), name='x')
-        masked = (Masking(mask_value= -1, input_shape = (None, None, None)))(x)
-        lstm_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, None), return_sequences = True)(masked)
+        x = Input(batch_shape = (None, None, self.input_dim), name='x')
+        masked = (Masking(mask_value= -1, input_shape = (None, None, self.input_dim)))(x)
+        lstm_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
         dense_out = Dense(self.output_dim, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(lstm_out)
         earlyStopping = EarlyStopping(monitor='val_loss', patience=2, verbose=0, mode='auto')
         
