@@ -49,7 +49,8 @@ class TestCallback(Callback):
             diff_sq, response, correct = 0, 0, 0
             for i in range(user * max_responses, (user + 1) * max_responses):
                 if mask_matrix[i] == 0:
-                    break
+                    #break
+                    continue
                 if y_true[i] == 1 and y_pred[i] >0.5:
                     correct += 1
                 elif y_true[i] == 0 and y_pred[i] < 0.5:
@@ -81,7 +82,8 @@ class TestCallback(Callback):
             diff_sq, response, correct = 0, 0, 0
             for i in range(user * max_responses, (user + 1) * max_responses):
                 if mask_matrix[i] == 0:
-                    break
+                    #break
+                    continue
                 if y_true[i] == 1 and y_pred[i] >0.5:
                     correct += 1
                 elif y_true[i] == 0 and y_pred[i] < 0.5:
@@ -136,8 +138,8 @@ class DKTnet():
         ## first layer for the input (x_t)
         x = Input(batch_shape = (None, None, self.input_dim), name='x')
         masked = (Masking(mask_value= -1, input_shape = (None, None, self.input_dim)))(x)
-        lstm_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
-        dense_out = Dense(self.input_dim_order, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(lstm_out)
+        rnn_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
+        dense_out = Dense(self.input_dim_order, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(rnn_out)
         y_order = Input(batch_shape = (None, None, self.input_dim_order), name = 'y_order')
         merged = multiply([dense_out, y_order])
 
@@ -169,8 +171,8 @@ class DKTnet():
         ## first layer for the input (x_t)
         x = Input(batch_shape = (None, None, self.input_dim), name='x')
         masked = (Masking(mask_value= -1, input_shape = (None, None, self.input_dim)))(x)
-        lstm_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
-        dense_out = Dense(self.input_dim_order, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(lstm_out)
+        rnn_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
+        dense_out = Dense(self.input_dim_order, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(rnn_out)
         y_order = Input(batch_shape = (None, None, self.input_dim_order), name = 'y_order')
         merged = multiply([dense_out, y_order])
 
