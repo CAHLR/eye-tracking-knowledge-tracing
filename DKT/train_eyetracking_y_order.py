@@ -8,14 +8,13 @@ from keras.layers import Embedding
 from keras.layers import LSTM
 from keras.layers import Merge
 from theano import tensor as T
-#from model import DKTnet
-from DKT import DKTnet
+#from DKT import DKTnet
 from keras.preprocessing import sequence
 import pdb
 import os
 from utils import * #grid_eyetracking(w_size, h_size, x_min, y_min, x_max, y_max, position)
 # This is the 30 students-5 cross validation version. 7.16
-from discrete_model import discrete_net
+from eyetracking_model import eyetracking_net
 from optparse import OptionParser
 
 '''Choose different mode of eye-tracking model'''
@@ -33,7 +32,6 @@ parser.add_option("--complex_continuous",action="store_true",  dest="complex_con
                  help="using complex continuous for training, have difference between pages")
 
 (options, args) = parser.parse_args()
-
 
 
 
@@ -56,7 +54,7 @@ test_data = ['atoms11_imputed.csv', 'atoms32_imputed.csv', 'atoms41_imputed.csv'
 
 
 
-root = '/research/atoms/'
+root = '/research/atoms/Session2'
 imputed_list = []
 for dirpath,dirnames,filenames in os.walk(root):
     for filename in filenames:
@@ -76,6 +74,12 @@ total_name = []
 total_index = []
 total_time_stamp = []
 total_page_num = []
+total_SRquestion = []
+
+'''For y_order'''
+SRquestion_set = set()
+SRquestion_ID = 0
+SRquestion_dict = {}
 
 imputed_file = imputed_list[0]
 x_min = float("inf")
@@ -84,9 +88,10 @@ x_max = 0 # initialization
 y_max = 0 # initialization
 w_size = 5
 h_size = 5
-batch_size = 5
+batch_size = 5 # Adjust this parameter
 epoch = 50
 hidden_layer_size = 128
+screen_num = 3
 ''' Starts processing data'''    
 for imputed_file in imputed_list:
     if imputed_file[-19] == '/':
@@ -98,29 +103,77 @@ for imputed_file in imputed_list:
         student = pd.read_csv(imputed_file, low_memory=False)
         total_name.append(student_name)
         
-        total_page_num.append(student.Representation_Number_Overall[student.Screen_Number<=3])
+        total_page_num.append(list(student.Representation_Number_Overall[student.Screen_Number<=screen_num]))
         
-        total_position.append([student.L_Raw_X[student.Screen_Number<=3],student.L_Raw_Y[student.Screen_Number<=3]])
+        total_position.append([student.L_Raw_X[student.Screen_Number<=screen_num],\
+                               student.L_Raw_Y[student.Screen_Number<=screen_num]])
+        
+        '''Now ignore unimportant values in questions'''
+        student.loc[(student['Response']!='CORRECT') & (student['Response']!='INCORRECT'),'question'] = 'ignore'
+        student.loc[(student.question =='_root') | (student.question == 'done'),'question'] = 'ignore'
+        
+        '''Create SRquestion'''
+        
+        '''Change type of numbers for creating SRquestion'''
+        student.Screen_Number = student.Screen_Number.astype(str)
+        student.Representation_Number_Within_Screen = student.Representation_Number_Within_Screen.astype(str)
+        
+        '''Create column named SRquestion_name'''
+        student['SRquestion_name'] = student.Screen_Number + \
+                        student.Representation_Number_Within_Screen +\
+                        student.question
+                
+        '''Change type of numbers back'''
+        student.Screen_Number = student.Screen_Number.astype(float)
+        student.Representation_Number_Within_Screen = student.Representation_Number_Within_Screen.astype(float)     
+        
+        '''Update the SRquestion set and dict'''
+        # We only want SRquestion_set within certain Screen
+        SRquestion_set.update(student.loc[(student.question!= 'ignore') &\
+                                  (student.Screen_Number<=screen_num),'SRquestion_name']) 
+        
+        # SRquestion_ID starts from 1. SRquestion_ID == 0 means padding.
+        for SRquestion_name in SRquestion_set: 
+            if SRquestion_name not in SRquestion_dict:
+                SRquestion_ID += 1
+                SRquestion_dict.update({SRquestion_name: SRquestion_ID})
+        student['SRquestion_ID'] = 0 #initialize new column.
+        
+        tmp_condition = (student.question!='ignore')&(student.Screen_Number<=screen_num)
+        student.loc[tmp_condition,'SRquestion_ID'] = student.loc[tmp_condition,'SRquestion_name'].\
+                                                     apply(lambda x:SRquestion_dict[x])    
+        tmp_condition = []
+        
+        total_SRquestion.append(student['SRquestion_ID'][student.Screen_Number<= screen_num])
+        
         student.Response = student.Response.replace(float('nan'),-1)
         student.Response = student.Response.replace('HINT', -1)
         student.Response = student.Response.replace('CORRECT',1)
         student.Response = student.Response.replace('INCORRECT',0)
-        total_answers.append(student.Response[student.Screen_Number<=3])
-        total_time_stamp.append(student[student.Screen_Number<=3].iloc[:,0])
-        #to avoid(0,0) calculated as the min value
+        
+        total_answers.append(student.Response[student.Screen_Number<= screen_num])
+        total_time_stamp.append(student[student.Screen_Number<= screen_num].iloc[:,0])
+        
+        '''To avoid(0,0) calculated as the min value'''
         student.L_Raw_X = student.L_Raw_X.replace(0.0,float('inf'))
         student.L_Raw_Y = student.L_Raw_Y.replace(0.0,float('inf'))
-        x_min = min(x_min,min(student.L_Raw_X[student.Screen_Number<=3]))
-        y_min = min(y_min,min(student.L_Raw_Y[student.Screen_Number<=3]))
+        x_min = min(x_min,min(student.L_Raw_X[student.Screen_Number<= screen_num]))
+        y_min = min(y_min,min(student.L_Raw_Y[student.Screen_Number<= screen_num]))
         student.L_Raw_X = student.L_Raw_X.replace(float('inf'),0.0)
         student.L_Raw_Y = student.L_Raw_Y.replace(float('inf'),0.0)
         
-        x_max = max(x_max,max(student.L_Raw_X[student.Screen_Number<=3]))
-        y_max = max(y_max,max(student.L_Raw_Y[student.Screen_Number<=3]))
+        x_max = max(x_max,max(student.L_Raw_X[student.Screen_Number<= screen_num]))
+        y_max = max(y_max,max(student.L_Raw_Y[student.Screen_Number<= screen_num]))
 print('x_max is ',x_max)
 print('y_max is ',y_max)
 assert len(total_position) == len(total_answers)
 print('find ',len(total_position),'student')
+
+# Clear set and dict
+SRquestion_set = set()
+#SRquestion_ID = 0
+SRquestion_dict = {} 
+
 
 
 df = pd.DataFrame([], columns=[])
@@ -136,12 +189,15 @@ index_dict = {}
 answer_dict = {}
 position_dict = {}
 page_num_dict = {}
+order_dict = {}
 for i in range(len(total_name)):
     index_dict.update({total_name[i]: total_index[i]})
     position_dict.update({total_name[i]: total_position[i]})
     answer_dict.update({total_name[i]: total_answers[i]})
     page_num_dict.update({total_name[i]: total_page_num[i]})
+    order_dict.update({total_name[i]: total_SRquestion[i]})
     
+print('Data processing finished, now starts cross validation')
 '''Now starts cross validation'''    
 cv_count = 0
 max_len = np.max([len(i) for i in total_index])
@@ -154,6 +210,30 @@ for indexes in cross_val_list:
     val_input = []
     val_truth = []
     
+    
+    '''Creating y_order matrix for all modes'''
+    train_order = []
+    val_order = []
+    for train_index in train_indexes:
+        pad_len = max_len-len(answer_dict[train_val_data[train_index]])    
+        pad_order = list(order_dict[train_val_data[train_index]]) +\
+                   list((-1.) * np.ones(pad_len))
+        train_order.append(pad_order)
+                    
+    for val_index in val_indexes:
+        pad_len = max_len-len(answer_dict[train_val_data[val_index]])           
+        pad_order = list(order_dict[train_val_data[val_index]]) +\
+                   list((-1.) * np.ones(pad_len))               
+        val_order.append(pad_order)
+        
+    '''Create onehot for orders while zero-hot for no response time slice'''
+    train_order = np.eye(SRquestion_ID+1)[np.array(train_order, int)] #SRquestion starts from 1,while 0 is the padding value
+    val_order = np.eye(SRquestion_ID+1)[np.array(val_order, int)]        
+    train_order = train_order[:,:,1:]
+    val_order = val_order[:,:,1:]
+        
+        
+        
     if options.simple_continuous == True:
         for train_index in train_indexes:
             pad_len = max_len-len(answer_dict[train_val_data[train_index]])
@@ -163,7 +243,8 @@ for indexes in cross_val_list:
                    list((-1.) * np.ones(pad_len))
             pad_y = list(position_dict[train_val_data[train_index]][1]) +\
                    list((-1.) * np.ones(pad_len))
-                           
+            
+                
             train_input.append([pad_x, pad_y])
             train_truth.append(pad_truth)
             
@@ -175,7 +256,9 @@ for indexes in cross_val_list:
                    list((-1.) * np.ones(pad_len))
             pad_y = list(position_dict[train_val_data[val_index]][1]) +\
                    list((-1.) * np.ones(pad_len))
-                           
+                
+            pad_order = list(order_dict[train_val_data[val_index]]) +\
+                   list((-1.) * np.ones(pad_len))               
             val_input.append([pad_x, pad_y])
             val_truth.append(pad_truth)
             
@@ -225,8 +308,8 @@ for indexes in cross_val_list:
         
         train_input = np.array(train_input, dtype = int)
         val_input = np.array(val_input, dtype = int)
-        train_input[train_input==-1.] = max_index+1 # padding value is max_index+1
-        val_input[val_input==-1.] = max_index+1
+        train_input[train_input==-1.] = 0 # padding value is 0
+        val_input[val_input==-1.] = 0
         
         train_input = np.eye(max_index+2)[np.array(train_input)] # onehot
         train_truth = (np.array(train_truth))[:,:,np.newaxis]
@@ -239,7 +322,11 @@ for indexes in cross_val_list:
     if options.complex_continuous == True:
         train_page_num = []
         val_page_num = []
-        max_page = np.max([i for i in total_page_num])
+        total_max_page = []
+        for i in total_page_num:
+            total_max_page.append(max(i))
+        max_page = max(total_max_page)
+
         for train_index in train_indexes:
             pad_len = max_len-len(answer_dict[train_val_data[train_index]])
             pad_truth = list(answer_dict[train_val_data[train_index]]) +\
@@ -278,16 +365,79 @@ for indexes in cross_val_list:
         train_truth = (np.array(train_truth))[:,:,np.newaxis]
         val_input = (np.array(val_input)).swapaxes(1,2)
         val_truth = (np.array(val_truth))[:,:,np.newaxis]
-        train_page_num = np.eye(max_page)[np.array(train_page_num)]
-        val_page_num = np.eye(max_page)[np.array(val_page_num)]
+        train_page_num = np.eye(int(max_page))[np.array(train_page_num,int)-1] # must be int for onehot
+        val_page_num = np.eye(int(max_page))[np.array(val_page_num,int)-1] # -1 because the ID should starts from 0, for onehot
+        train_input = np.concatenate((train_input,train_page_num),axis = 2)
+        val_input = np.concatenate((val_input,val_page_num),axis = 2)
+        
+        
+        
+    if options.complex_onehot == True:
+        train_page_num = []
+        val_page_num = []
+        total_max_page = []
+        for i in total_page_num:
+            total_max_page.append(max(i))
+        max_page = max(total_max_page)
+        max_index = 0
+        
+        for train_index in train_indexes:
+            max_index = max(max_index,train_index)
+            pad_len = max_len-len(answer_dict[train_val_data[train_index]])
+            pad = list(answer_dict[train_val_data[train_index]]) +\
+                   list((-1.) * np.ones(pad_len))
+            pad_page_num = list(page_num_dict[train_val_data[train_index]])+\
+                            list((-1.) * np.ones(pad_len))    
+            train_input.append(index_dict[train_val_data[train_index]])
+            train_truth.append(pad)
+            train_page_num.append(pad_page_num)
+            
+        for val_index in val_indexes:
+            max_index = max(max_index,val_index)
+            pad_len = max_len-len(answer_dict[train_val_data[val_index]])
+            pad = list(answer_dict[train_val_data[val_index]]) +\
+                   list((-1.) * np.ones(pad_len))  
+            pad_page_num = list(page_num_dict[train_val_data[val_index]])+\
+                        list((-1.) * np.ones(pad_len))                
+            val_input.append(index_dict[train_val_data[val_index]])
+            val_truth.append(pad)
+            val_page_num.append(pad_page_num)
+        
+        train_input = np.array(train_input, dtype = int)
+        val_input = np.array(val_input, dtype = int)
+        train_input[train_input==-1.] = 0 # padding value is 0
+        val_input[val_input==-1.] = 0
+        
+        train_input = np.array(train_input)
+        val_input = np.array(val_input)
+        train_page_num = np.array(train_page_num)
+        val_page_num = np.array(val_page_num)
+        
+        # page num starts from 1
+        train_input[np.where(train_input>0)] = train_page_num[np.where(train_input>0)]*\
+                                                (max_index+1) + train_input[np.where(train_input>0)]
+        val_input[np.where(val_input>0)] = val_page_num[np.where(val_input>0)]*\
+                                                (max_index+1)+ val_input[np.where(val_input>0)]
+        
+        
+        train_input = np.eye(int(1+max_page*(max_index+1)))[np.array(train_input,dtype = int)] # onehot
+        train_truth = (np.array(train_truth))[:,:,np.newaxis]
+        val_input = np.eye(int(1+max_page(max_index+1)))[np.array(val_input,dtype = int)] #onehot
+        val_truth = (np.array(val_truth))[:,:,np.newaxis]
+        
+        
+        '''One hot will be of length( max_index+2)'''
+        print('Max_index-',max_index,'Padding-',max_index+1,' Onehot-',max_index+2)
         
         
     
     input_dim = train_input.shape[-1]
-    model = discrete_net(batch_size, epoch, hidden_layer_size, input_dim)
-    model.build(train_input,train_truth, val_input,val_truth)
+    output_dim = train_order.shape[-1]
+    model = eyetracking_net(batch_size, epoch, hidden_layer_size, input_dim, output_dim)
+    model.build_y_order(train_input, train_order, train_truth,  val_input, val_order, val_truth)
 
 
 
 
         
+
