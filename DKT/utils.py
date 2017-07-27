@@ -10,7 +10,9 @@ def inputStudent(csvInput):
         else: yield line
 
 def grid_eyetracking(w_size, h_size, x_min, y_min, x_max, y_max, position):
-    #position should be a [x_list,y_list],
+    # Position should be a [x_list,y_list]
+    # This function is for convert x, y labels into region indexes. 
+    # 0 means abnormal regions, while 1~w_size*h_size represent normal regions.
     position = np.array(list(zip(position[0],position[1])))
     x_axis = np.linspace(x_min, x_max, num = (w_size+1))
     y_axis = np.linspace(y_min, y_max, num = (h_size+1))
@@ -22,8 +24,9 @@ def grid_eyetracking(w_size, h_size, x_min, y_min, x_max, y_max, position):
             set(list(np.where(position[:,0]<=x_axis[i+1]))[0]) &\
             set(list(np.where(position[:,1]>=y_axis[j]))[0]) &\
             set(list(np.where(position[:,1]<=y_axis[j+1]))[0])
-            index[list(pos_in_region)] = i + w_size*j  
-    index[np.where(index == -1)] = w_size * h_size # new region for position out of range 
+            index[list(pos_in_region)] = i + w_size*j + 1
+            
+    index[np.where(index == -1)] = 0 # new region for position out of range 
     return index
 
 def transpose_df_column(df_input):
