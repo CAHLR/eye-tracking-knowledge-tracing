@@ -1,3 +1,19 @@
+import argparse
+import sys
+
+parser = argparse.ArgumentParser(description='test parsing arguments')
+
+parser.add_argument('--batch_size',type = int)
+
+
+print (sys.argv)
+# arg = parser.parse_args(sys.argv[1:])
+arg = parser.parse_args(sys.argv[1:])
+print (arg)
+
+# print parser.print_help()
+
+'''
 from optparse import OptionParser 
 parser = OptionParser() 
 parser.add_option("--pdcl",'--asd','--qwe','--wer', action="store_true", 
@@ -13,10 +29,12 @@ parser.add_option("--simple_index",action="store_true", dest="simple_index",\
 
 
 
-(options, args) = parser.parse_args() 
+(options, args) = parser.parse_args(["infile=", "outfile="])
+
 print(args)
 print(options)
 if options.pdcl==True: 
     print ('pdcl is true') 
 if options.zdcl==True: 
     print ('zdcl is true')
+'''
