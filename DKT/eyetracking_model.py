@@ -1,9 +1,9 @@
+import keras
 from keras.models import Model
 from keras.layers import Input, Dropout, Masking, Dense, Embedding
 from keras.layers import Embedding
 from keras.layers.core import Flatten, Reshape
-from keras.layers import LSTM
-from keras.layers.recurrent import SimpleRNN
+from keras.layers.recurrent import SimpleRNN, LSTM, GRU
 from keras.layers import merge
 from keras.layers.merge import multiply
 from keras.callbacks import EarlyStopping
@@ -117,12 +117,31 @@ class TestCallback_y_order(Callback):
             
 
 class eyetracking_net():
-    def __init__(self,batch_size, epoch, hidden_layer_size,input_dim, output_dim):
+    def __init__(self,batch_size, epoch, hidden_layer_size,input_dim, output_dim, learning_rate, optimizer_mode, RNN_mode):
         self.input_dim = input_dim # we don't need to specify input_dim here
         self.output_dim = output_dim # the output response is 1/0
         self.batch_size = batch_size
         self.epoch = epoch
         self.hidden_layer_size = hidden_layer_size
+        
+        self.learning_rate = learning_rate
+        self.optimizer_mode = optimizer_mode
+        self.RNN_mode = RNN_mode
+        
+        '''Choose optimizer and learning rate'''
+        if self.optimizer_mode == 'RMSprop':
+            self.optimizer =keras.optimizers.RMSprop(lr= learning_rate)
+            
+        elif self.optimizer_mode == 'Adagrad':
+            self.optimizer = keras.optimizers.Adagrad(lr=learning_rate)
+            
+        elif self.optimizer_mode == 'Adamax':
+            self.optimizer = keras.optimizers.Adamax(lr=learning_rate)
+        else:
+            print('Lack choice of optimizer or learning_rate')
+        
+            
+            
         print ("Model Initialized")
     
     def custom_bce(self, y_true, y_pred):
@@ -140,8 +159,22 @@ class eyetracking_net():
         
         x = Input(batch_shape = (None, None, self.input_dim), name='x')
         masked = (Masking(mask_value= -1, input_shape = (None, None, self.input_dim)))(x)
-        rnn_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
-        dense_out = Dense(self.output_dim, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(rnn_out)
+        #RNN_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
+        
+        if self.RNN_mode == 'SimpleRNN':
+            RNN_out = SimpleRNN(self.hidden_layer_size, input_shape =\
+                                (None, None, self.input_dim), return_sequences = True)(masked)
+        elif self.RNN_mode == 'LSTM':
+            RNN_out = LSTM(self.hidden_layer_size, input_shape =\
+                                    (None, None, self.input_dim), return_sequences = True)(masked)
+        elif self.RNN_mode == 'GRU':
+            RNN_out = GRU(self.hidden_layer_size, input_shape =\
+                                        (None, None, self.input_dim), return_sequences = True)(masked)
+        else:
+            print('Sth wrong with the RNN_mode')
+                
+
+        dense_out = Dense(self.output_dim, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(RNN_out)
         earlyStopping = EarlyStopping(monitor='val_loss', patience=2, verbose=0, mode='auto')
         
         model = Model(inputs=x, outputs=dense_out)
@@ -170,8 +203,22 @@ class eyetracking_net():
         
         x = Input(batch_shape = (None, None, self.input_dim), name='x')
         masked = (Masking(mask_value= -1, input_shape = (None, None, self.input_dim)))(x)
-        rnn_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
-        dense_out = Dense(self.output_dim, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(rnn_out)
+        #RNN_out = SimpleRNN(self.hidden_layer_size, input_shape = (None, None, self.input_dim), return_sequences = True)(masked)
+        
+        if self.RNN_mode == 'SimpleRNN':
+            RNN_out = SimpleRNN(self.hidden_layer_size, input_shape =\
+                                (None, None, self.input_dim), return_sequences = True)(masked)
+        elif self.RNN_mode == 'LSTM':
+            RNN_out = LSTM(self.hidden_layer_size, input_shape =\
+                                    (None, None, self.input_dim), return_sequences = True)(masked)
+        elif self.RNN_mode == 'GRU':
+            RNN_out = GRU(self.hidden_layer_size, input_shape =\
+                                        (None, None, self.input_dim), return_sequences = True)(masked)
+        else:
+            print('Sth wrong with the RNN_mode')
+            
+            
+        dense_out = Dense(self.output_dim, input_shape = (None, None, self.hidden_layer_size), activation='sigmoid')(RNN_out)
         y_order = Input(batch_shape = (None, None, self.output_dim), name = 'y_order')
         merged = multiply([dense_out, y_order])
 
