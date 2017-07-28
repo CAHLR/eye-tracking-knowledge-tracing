@@ -17,6 +17,8 @@ from utils import * #grid_eyetracking(w_size, h_size, x_min, y_min, x_max, y_max
 from eyetracking_model import eyetracking_net
 from optparse import OptionParser
 
+'''Stop updating since 7/27/2017, see further development in train_eyetracking.py'''
+
 '''Choose different mode of eye-tracking model'''
 parser = OptionParser()
 parser.add_option("--simple_index",action="store_true",  dest="simple_index",\
@@ -352,7 +354,8 @@ for indexes in cross_val_list:
     
     input_dim = train_input.shape[-1]
     output_dim = 1 # Ignore y_order information and only predict Correctness.
-    model = eyetracking_net(batch_size, epoch, hidden_layer_size, input_dim, output_dim)
+    model = eyetracking_net(batch_size, epoch, hidden_layer_size, input_dim, output_dim,\
+                                learning_rate, optimizer_mode, RNN_mode)
     model.build_no_y_order(train_input,train_truth, val_input,val_truth)
 
 
