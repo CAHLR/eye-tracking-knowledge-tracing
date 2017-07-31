@@ -48,15 +48,17 @@ class TestCallback(Callback):
         for user in range(num_users):
             diff_sq, response, correct = 0, 0, 0
             for i in range(user * max_responses, (user + 1) * max_responses):
-                if mask_matrix[i] == 0:
-                    #break
+                #if mask_matrix[i] == 0:
+                    ##break
+                    #continue
+                if y_true[i] ==-1:
                     continue
                 if y_true[i] == 1 and y_pred[i] >0.5:
                     correct += 1
                 elif y_true[i] == 0 and y_pred[i] < 0.5:
                     correct += 1
-                elif y_true[i] == -1:
-                    padding_num += 1
+                #elif y_true[i] == -1:
+                    #padding_num += 1
                 response += 1
                 diff_sq += (y_true[i] - y_pred[i]) ** 2
             if response != 0:
