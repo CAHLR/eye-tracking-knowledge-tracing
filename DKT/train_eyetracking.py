@@ -19,7 +19,7 @@ from eyetracking_model import eyetracking_net
 import argparse
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--y_order', type=bool, default=True)
+parser.add_argument('--y_order', type=bool, default= False)
 
 parser.add_argument('--simple_index', type=bool, default= False)
 parser.add_argument('--simple_onehot', type=bool, default= False)
@@ -27,7 +27,7 @@ parser.add_argument('--simple_continuous', type=bool, default= False)
 parser.add_argument('--complex_onehot', type=bool, default= False)
 parser.add_argument('--complex_continuous', type=bool, default= False)
 
-parser.add_argument('--batch_size', type= int, default= 5)
+parser.add_argument('--batch_size', type= int, default= 9)
 parser.add_argument('--hidden_layer_size', type= int, default= 256)
 parser.add_argument('--learning_rate', type= float, default= 0.001)
 parser.add_argument('--optimizer_mode', type= str, default= 'RMSprop')
@@ -134,7 +134,7 @@ total_name = []
 total_index = []
 total_time_stamp = []
 total_page_num = []
-    total_SRquestion = []
+total_SRquestion = []
 
 '''For y_order'''
 SRquestion_set = set()
@@ -154,15 +154,15 @@ standard = [] # standard is for choosing certain Screen or page.
 
 ''' Starts processing data'''    
 for imputed_file in train_val_data:
-    if imputed_file[-19] == '/':
-        student_name = imputed_file[-18:]
-    else:
-        student_name = imputed_file[-19:]
+    #if imputed_file[-19] == '/':
+        #student_name = imputed_file[-18:]
+    #else:
+        #student_name = imputed_file[-19:]
     print(imputed_file)
     
     student = pd.read_csv(imputed_file, low_memory=False)
     standard = (student.Stimulus == 'bl i.jpg')
-    total_name.append(student_name)
+    total_name.append(imputed_file)
 
     total_page_num.append(list(student.Representation_Number_Overall[standard]))
 
@@ -438,9 +438,26 @@ for indexes in cross_val_list:
         train_page_num = []
         val_page_num = []
         total_max_page = []
+        
+        '''Use unique and reduced page_num'''
+        page_reduce_dict = {}
+        page_reduce_ID = 0
+        total_tmp_page_num = []
         for i in total_page_num:
-            total_max_page.append(max(i))
-        max_page = max(total_max_page)
+            tmp_page_num = []
+            for j in i:
+                if j not in page_reduce_dict:
+                    page_reduce_ID += 1
+                    page_reduce_dict.update({j:page_reduce_ID})
+                tmp_page_num.append(page_reduce_dict[j])
+            total_tmp_page_num.append(tmp_page_num)
+        total_page_num = total_tmp_page_num
+        max_page = page_reduce_ID # The largest new page_num
+        total_tmp_page_num = []
+        tmp_page_num = []
+                    
+        #total_max_page.append(max(i))
+        #max_page = max(total_max_page)
         max_index = 0
         
         for train_index in train_indexes:
@@ -476,9 +493,10 @@ for indexes in cross_val_list:
         val_page_num = np.array(val_page_num)
         
         # page num starts from 1
-        train_input[np.where(train_input>0)] = train_page_num[np.where(train_input>0)]*\
+        # notice that we minus 1 when calculate the new train_input. If the question is on the 1st page, then it's '0 + original ID'
+        train_input[np.where(train_input>0)] = (train_page_num[np.where(train_input>0)]-1)*\
                                                 (max_index+1) + train_input[np.where(train_input>0)]
-        val_input[np.where(val_input>0)] = val_page_num[np.where(val_input>0)]*\
+        val_input[np.where(val_input>0)] = (val_page_num[np.where(val_input>0)]-1)*\
                                                 (max_index+1)+ val_input[np.where(val_input>0)]
         
         
@@ -492,13 +510,19 @@ for indexes in cross_val_list:
         print('Max_index-',max_index,'Padding-',max_index+1,' Onehot-',max_index+2)
         
     
-    input_dim = train_input.shape[-1]
-    output_dim = train_order.shape[-1]
-    model = eyetracking_net(batch_size, epoch, hidden_layer_size, input_dim, output_dim,\
-                           learning_rate, optimizer_mode, RNN_mode)
+
     if args.y_order == True:
+        input_dim = train_input.shape[-1]
+        output_dim = train_order.shape[-1]
+        model = eyetracking_net(batch_size, epoch, hidden_layer_size, input_dim, output_dim,\
+                           learning_rate, optimizer_mode, RNN_mode)
         model.build_y_order(train_input, train_order, train_truth,  val_input, val_order, val_truth)
+    
     elif args.y_order == False:
+        input_dim = train_input.shape[-1]
+        output_dim = 1
+        model = eyetracking_net(batch_size, epoch, hidden_layer_size, input_dim, output_dim,\
+                           learning_rate, optimizer_mode, RNN_mode)
         model.build_no_y_order(train_input,train_truth, val_input,val_truth)
     else:
         print('Sth wrong about y_order when applying to model')
