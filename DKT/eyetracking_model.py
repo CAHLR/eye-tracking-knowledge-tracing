@@ -187,7 +187,7 @@ class eyetracking_net():
                   callbacks = [ earlyStopping, \
                                 TestCallback_no_y_order([self.val_index, \
                                 self.val_response])],\
-                                validation_data = (self.val_index,self.val_response), shuffle = True)
+                                validation_data = [self.val_index,self.val_response], shuffle = True)
         
     def build_y_order(self, train_index, train_order,train_response,\
                       val_index, val_order, val_response):
