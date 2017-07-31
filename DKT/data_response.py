@@ -20,8 +20,7 @@ class DataMatrix():
     def build(self):
         print('Loading data...')
         #training process
-        root = '../../'
-        trainPath = root + 'DKT_atoms.csv'
+        trainPath = '/research/atoms/Session1/Session1_DKT_atoms.csv'
         # trainPath = root + 'data/assistments/builder_train.csv'
         csvFile = open(trainPath, 'r')
         csvInput = csv.reader(csvFile)

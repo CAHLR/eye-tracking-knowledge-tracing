@@ -5,9 +5,9 @@ import pandas as pd
 import pdb
 import os
 import pdb
-root = '/research/atoms/'
+root = '/research/atoms/Session1/'
 #writer = csv.writer(open(root + 'DKT_atoms.csv','w',newline=''))
-with open(root + 'DKT_atoms.csv','w',newline='') as file:
+with open(root + 'Session1_DKT_atoms.csv','w',newline='') as file:
     writer = csv.writer(file)
 
     imputed_list = []
@@ -38,17 +38,15 @@ with open(root + 'DKT_atoms.csv','w',newline='') as file:
             print (imputed_file,'filtering out, page info missing')
             continue
 
-        student_res = student[['Screen_Number','Representation_Number_Within_Screen','question','Response']][Response_null == False]
+        #student_res = student[['Screen_Number','Representation_Number_Within_Screen','question','Response']][Response_null == False]
+        student_res = student[Response_null == False]
         student_res = student_res[student_res['question'] != '_root'][student_res['question'] != 'done'][student_res['question'] != 'nl'][student_res['Response'] != 'HINT']
         problem_IDs = [] # the total problems sequence of each student.
         answers = [] # the total answers sequence of each student
         for ix, row in student_res.iterrows():
-            if row['Screen_Number']>3 :
-                break
-            #if str(row['Representation_Number_Within_Screen'])== 'nan':
-                #filter_student = True
-                #break
-            SPquestion = str(row['Screen_Number']) + str(row['Representation_Number_Within_Screen']) + row['question']
+            if row['Stimulus'] != "bl i.jpg":
+                continue
+            SPquestion = str(row['Representation_Number_Overall']) + row['question']
             # print (SPquestion)
             if not SPquestion in problem_set:
                 problem_ID += 1
