@@ -13,6 +13,7 @@ from data_response import DataMatrix, student
 from DKT import DKTnet
 from keras.preprocessing import sequence
 import pdb
+import os
 
 
 
@@ -92,7 +93,17 @@ cross_val_list = [[[ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
 train_val_data = ['atoms31_imputed.csv', 'atoms21_imputed.csv', 'atoms28_imputed.csv', 'atoms15_imputed.csv', 'atoms20_imputed.csv', 'atoms37_imputed.csv', 'atoms18_imputed.csv', 'atoms36_imputed.csv', 'atoms07_imputed.csv', 'atoms6_imputed.csv', 'atoms1_imputed.csv', 'atoms38_imputed.csv', 'atoms45_imputed.csv', 'atoms27_imputed.csv', 'atoms9_imputed.csv', 'atoms22_imputed.csv', 'atoms4_imputed.csv', 'atoms8_imputed.csv', 'atoms29_imputed.csv', 'atoms14_imputed.csv', 'atoms12_imputed.csv', 'atoms17_imputed.csv', 'atoms43_imputed.csv', 'atoms26_imputed.csv', 'atoms19_imputed.csv']
 
 test_data = ['atoms11_imputed.csv', 'atoms32_imputed.csv', 'atoms41_imputed.csv', 'atoms33_imputed.csv', 'atoms39_imputed.csv', 'atoms10_imputed.csv', 'atoms23_imputed.csv']
-'''
+
+root = '/research/atoms/Session2/'
+for dirpath,dirnames,filenames in os.walk(root):
+    for filename in filenames:
+        for i in range(len(train_val_data)):
+            if filename.endswith(train_val_data[i]):
+                train_val_data[i] = dirpath + '/' + filename
+'''                
+
+
+
 data = DataMatrix()
 data.build()
 print('DataMatrix initialized')
@@ -123,7 +134,7 @@ for indexes in cross_val_list:
     for val_index in val_indexes:
         val_fold.append(data.trainData[stu_dict[(train_val_data[val_index])]])
     #batch_size = 5
-    batch_size = 6
+    batch_size = 9
     input_dim_order =  int(data.max_questionID + 1) #consider whether we need plus 1
     input_dim = 2 * input_dim_order
     epoch = 10
@@ -137,7 +148,7 @@ for indexes in cross_val_list:
     for student in train_fold:
         num_student += 1
         if num_student % 200 ==0:
-            print (num_student,' ',num_student/46051.)
+            print (num_student)
         x_single_train = np.zeros([input_dim, data.longest])
         y_single_train = np.zeros([1, data.longest])
         y_single_train_order = np.zeros([input_dim_order, data.longest])
@@ -223,6 +234,12 @@ for indexes in cross_val_list:
     x_val = x_val[:,:-1,:]
     y_val = y_val[:,1:,:]
     y_val_order = y_val_order[:,1:,:]
+    
+    # For zero-exp test.
+    #print('Notice! zero-exp!')
+    #x_train = np.zeros(np.array(x_train).shape)
+    #x_val = np.zeros(np.array(x_val).shape)
+    
     model = DKTnet(input_dim, input_dim_order, hidden_layer_size,
             batch_size, epoch, np.array(x_train), np.array(y_train), np.array(y_train_order),np.array(x_val), np.array(y_val), np.array(y_val_order))
     
