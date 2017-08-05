@@ -18,6 +18,7 @@ import numpy as np
 import pdb
 from math import sqrt
 from keras.callbacks import Callback
+import pandas as pd
 
 class TestCallback_no_y_order(Callback):
 
@@ -65,17 +66,46 @@ class TestCallback_no_y_order(Callback):
             
 class TestCallback_y_order(Callback):
 
-    def __init__(self, test_data = [[],[],[]]):
+    def __init__(self, test_data,file_name):
+        print('TestCallback_y_order initialized!')
+        print('file_name ',file_name)
+        self.file_name = file_name
+        self.count = 0 # For the output files
         self.x_test, self.y_test_order, self.y_test = test_data
 
-    def on_epoch_begin(self, epoch, logs={}):
 
+        
+    def on_epoch_begin(self, epoch, logs={}):
         y_pred = self.model.predict([self.x_test, self.y_test_order])
         avg_rmse, avg_acc = self.rmse_masking(self.y_test, y_pred)
+        self.output_info(self.y_test, y_pred)
+        print('output info attached!')
         print('\nTesting avg_rmse: {}\n'.format(avg_rmse))
         print('\nTesting avg_acc: {}\n'.format(avg_acc))
 
-
+    def output_info(self, y_true, y_pred):
+        '''output_info'''
+        time_seq_order = np.argmax(self.y_test_order, axis=2)
+        
+        time_seq_order = time_seq_order.flatten()
+        y_true = y_true.flatten()
+        y_pred = y_pred.flatten()
+        seq_order = time_seq_order[y_true!=-1]
+        seq_true = y_true[y_true!=-1]
+        seq_pred = y_pred[y_true!=-1]
+        
+        order_name = ('order'+str(self.count))
+        true_name = ('true'+str(self.count))
+        pred_name = ('pred'+str(self.count))
+        df = pd.DataFrame({order_name:seq_order, true_name:seq_true,\
+                          pred_name:seq_pred})
+        #df.order_name = df.order_name.astype(str)
+        #df.true_name = df.true_name.astype(str)
+        #df.pred_name = df.pred_name.astype(str)
+        self.count += 1
+        path = '/research/atoms/log/'+ self.file_name
+        df.to_csv(path,mode = 'a')
+        
     def rmse_masking(self, y_true, y_pred):
         mask_matrix = np.sum(self.y_test_order, axis=2).flatten()
         num_users, max_responses = np.shape(self.x_test)[0], np.shape(self.x_test)[1]
@@ -111,7 +141,9 @@ class TestCallback_y_order(Callback):
             return sum(rmse)/float(len(rmse)), sum(acc)/float(len(acc))
         except:
             pdb.set_trace()
-            
+    
+
+                    
             
             
             
@@ -190,11 +222,11 @@ class eyetracking_net():
                                 validation_data = [self.val_index,self.val_response], shuffle = True)
         
     def build_y_order(self, train_index, train_order,train_response,\
-                      val_index, val_order, val_response):
+                      val_index, val_order, val_response, file_name):
         self.train_index = train_index
         self.train_order = train_order
         self.train_response = train_response
-        
+        self.file_name = file_name
 
         self.val_index = val_index
         self.val_order = val_order
@@ -244,7 +276,7 @@ class eyetracking_net():
                   epochs=self.epoch, \
                   callbacks = [ earlyStopping, \
                              TestCallback_y_order([self.val_index,self.val_order,\
-                             self.val_response])],\
+                             self.val_response],self.file_name)],\
                              validation_data = ([self.val_index,self.val_order],self.val_response), shuffle = True)
         
         

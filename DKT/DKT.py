@@ -18,6 +18,7 @@ import numpy as np
 import pdb
 from math import sqrt
 from keras.callbacks import Callback
+import pandas as pd
 
 """
 To calculate and print the average rmse on the validation set after every epoch
@@ -26,14 +27,39 @@ class TestCallback(Callback):
 
     def __init__(self, test_data = [[],[],[]]):
         self.x_test, self.y_test_order, self.y_test = test_data
+        self.count = 0
 
     def on_epoch_begin(self, epoch, logs={}):
-
         y_pred = self.model.predict([self.x_test, self.y_test_order])
         avg_rmse, avg_acc = self.rmse_masking(self.y_test, y_pred)
+        self.output_info(self.y_test, y_pred)
         print('\nTesting avg_rmse: {}\n'.format(avg_rmse))
         print('\nTesting avg_acc: {}\n'.format(avg_acc))
 
+    def output_info(self, y_true, y_pred):
+        '''output_info'''
+        time_seq_order = np.argmax(self.y_test_order, axis=2)
+        
+        time_seq_order = time_seq_order.flatten()
+        y_true = y_true.flatten()
+        y_pred = y_pred.flatten()
+        seq_order = time_seq_order[y_true!=-1]
+        seq_true = y_true[y_true!=-1]
+        seq_pred = y_pred[y_true!=-1]
+        
+        order_name = ('order'+str(self.count))
+        true_name = ('true'+str(self.count))
+        pred_name = ('pred'+str(self.count))
+        df = pd.DataFrame({order_name:seq_order, true_name:seq_true,\
+                          pred_name:seq_pred})
+        #df.order_name = df.order_name.astype(str)
+        #df.true_name = df.true_name.astype(str)
+        #df.pred_name = df.pred_name.astype(str)
+        self.count += 1
+        print('output log')
+        path = '/research/atoms/log/DKT_sanity_log.csv'
+        df.to_csv(path,mode = 'a')
+        
 
     def rmse_masking(self, y_true, y_pred):
         mask_matrix = np.sum(self.y_test_order, axis=2).flatten()
