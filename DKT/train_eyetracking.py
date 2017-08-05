@@ -20,6 +20,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--y_order', type=bool, default= False)
+parser.add_argument('--file_name', type=str, default= 'output_file')
 
 parser.add_argument('--simple_index', type=bool, default= False)
 parser.add_argument('--simple_onehot', type=bool, default= False)
@@ -40,7 +41,6 @@ hidden_layer_size = args.hidden_layer_size
 learning_rate = args.learning_rate
 optimizer_mode = args.optimizer_mode
 RNN_mode = args.RNN_mode
-
 
 
 
@@ -120,7 +120,14 @@ cross_val_list = [[[ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
 train_val_data = ['atoms31_imputed.csv', 'atoms21_imputed.csv', 'atoms28_imputed.csv', 'atoms15_imputed.csv', 'atoms20_imputed.csv', 'atoms37_imputed.csv', 'atoms18_imputed.csv', 'atoms36_imputed.csv', 'atoms07_imputed.csv', 'atoms6_imputed.csv', 'atoms1_imputed.csv', 'atoms38_imputed.csv', 'atoms45_imputed.csv', 'atoms27_imputed.csv', 'atoms9_imputed.csv', 'atoms22_imputed.csv', 'atoms4_imputed.csv', 'atoms8_imputed.csv', 'atoms29_imputed.csv', 'atoms14_imputed.csv', 'atoms12_imputed.csv', 'atoms17_imputed.csv', 'atoms43_imputed.csv', 'atoms26_imputed.csv', 'atoms19_imputed.csv']
 
 test_data = ['atoms11_imputed.csv', 'atoms32_imputed.csv', 'atoms41_imputed.csv', 'atoms33_imputed.csv', 'atoms39_imputed.csv', 'atoms10_imputed.csv', 'atoms23_imputed.csv']
-'''
+
+root = '/research/atoms/Session2/'
+for dirpath,dirnames,filenames in os.walk(root):
+    for filename in filenames:
+        for i in range(len(train_val_data)):
+            if filename.endswith(train_val_data[i]):
+                train_val_data[i] = dirpath + '/' + filename
+'''                
 
 total_problems = []
 total_answers = []
@@ -162,6 +169,7 @@ for imputed_file in train_val_data:
     
     student = pd.read_csv(imputed_file, low_memory=False)
     standard = (student.Stimulus == 'bl i.jpg')
+    #standard = (student.Screen_Number<=3)
     total_name.append(imputed_file)
 
     total_page_num.append(list(student.Representation_Number_Overall[standard]))
@@ -171,7 +179,7 @@ for imputed_file in train_val_data:
 
     '''Now ignore unimportant values in questions'''
     student.loc[(student['Response']!='CORRECT') & (student['Response']!='INCORRECT'),'question'] = 'ignore'
-    student.loc[(student.question =='_root') | (student.question == 'done'),'question'] = 'ignore'
+    student.loc[(student.question =='_root') | (student.question == 'done')|(student['question'] == 'nl'),'question'] = 'ignore'
 
     '''Create SRquestion'''
 
@@ -207,7 +215,9 @@ for imputed_file in train_val_data:
     tmp_condition = []
 
     total_SRquestion.append(student['SRquestion_ID'][standard])
-
+    
+    # We found the bug!
+    student.loc[(student.question == 'ignore'),'Response'] = -1
     student.Response = student.Response.replace(float('nan'),-1)
     student.Response = student.Response.replace('HINT', -1)
     student.Response = student.Response.replace('CORRECT',1)
@@ -247,6 +257,27 @@ for i in range(len(total_position)):
 df = df.replace(float('nan'),-1.0)
 
 total_index = df.transpose().values.tolist()
+
+'''Use unique and reduced page_num'''
+'''We move it here from complex_onehot'''
+page_reduce_dict = {}
+page_reduce_ID = 0
+total_tmp_page_num = []
+for i in total_page_num:
+    tmp_page_num = []
+    for j in i:
+        if j not in page_reduce_dict:
+            page_reduce_ID += 1
+            page_reduce_dict.update({j:page_reduce_ID})
+        tmp_page_num.append(page_reduce_dict[j])
+    total_tmp_page_num.append(tmp_page_num)
+total_page_num = total_tmp_page_num
+max_page = page_reduce_ID # The largest new page_num
+total_tmp_page_num = []
+tmp_page_num = []
+
+
+        
 index_dict = {}
 answer_dict = {}
 position_dict = {}
@@ -437,28 +468,8 @@ for indexes in cross_val_list:
     if args.complex_onehot == True:
         train_page_num = []
         val_page_num = []
-        total_max_page = []
-        
-        '''Use unique and reduced page_num'''
-        page_reduce_dict = {}
-        page_reduce_ID = 0
-        total_tmp_page_num = []
-        for i in total_page_num:
-            tmp_page_num = []
-            for j in i:
-                if j not in page_reduce_dict:
-                    page_reduce_ID += 1
-                    page_reduce_dict.update({j:page_reduce_ID})
-                tmp_page_num.append(page_reduce_dict[j])
-            total_tmp_page_num.append(tmp_page_num)
-        total_page_num = total_tmp_page_num
-        max_page = page_reduce_ID # The largest new page_num
-        total_tmp_page_num = []
-        tmp_page_num = []
-                    
-        #total_max_page.append(max(i))
-        #max_page = max(total_max_page)
-        max_index = 0
+
+        max_index = 0 
         
         for train_index in train_indexes:
             max_index = max(max_index,train_index)
@@ -512,13 +523,15 @@ for indexes in cross_val_list:
     
 
     if args.y_order == True:
+        print('y_order==True')
         input_dim = train_input.shape[-1]
         output_dim = train_order.shape[-1]
         model = eyetracking_net(batch_size, epoch, hidden_layer_size, input_dim, output_dim,\
                            learning_rate, optimizer_mode, RNN_mode)
-        model.build_y_order(train_input, train_order, train_truth,  val_input, val_order, val_truth)
+        model.build_y_order(train_input, train_order, train_truth,  val_input, val_order, val_truth, args.file_name)
     
     elif args.y_order == False:
+        print('y_order==False')
         input_dim = train_input.shape[-1]
         output_dim = 1
         model = eyetracking_net(batch_size, epoch, hidden_layer_size, input_dim, output_dim,\
