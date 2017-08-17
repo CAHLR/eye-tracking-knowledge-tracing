@@ -179,7 +179,7 @@ class eyetracking_net():
     def custom_bce(self, y_true, y_pred):
         b = K.not_equal(y_true, -K.ones_like(y_true))
         b = K.cast(b, dtype='float32')
-        losses = K.mean(K.binary_crossentropy(y_pred, y_true), axis=-1) * K.mean(b, axis=-1)
+        losses = K.mean(K.binary_crossentropy(target = y_true, output = y_pred), axis=-1) * K.mean(b, axis=-1)
         count =  K.not_equal(losses, 0).sum()
         return  losses.sum()/count
 
