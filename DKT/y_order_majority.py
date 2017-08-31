@@ -215,7 +215,7 @@ print('x_max is ',x_max)
 print('y_max is ',y_max)
 assert len(total_position) == len(total_answers)
 print('find ',len(total_position),'student')
-
+print('Total SRquestion is',len(total_SRquestion))
 # Clear set and dict
 SRquestion_set = set()
 #SRquestion_ID = 0
@@ -325,6 +325,6 @@ for indexes in cross_val_list:
         acc.append(sum(seq_table.Response)/len(seq_table.Response))
     acc = sum(acc)/len(acc)
     avg_acc.append(acc)
-        
+print('avg_acc ',avg_acc)        
 
     
